@@ -1,5 +1,0 @@
-dataset,nodes_N,A_nnz,A_density_pct,netmf_nnz,netmf_density_pct
-blogcatalog,10312,667966,0.628157,643264,0.6
-ppi,3890,76584,0.506103,75524,0.5
-wikipedia,4777,184812,0.809878,163786,0.72
-flickr,80513,11799764,0.182029,N/A (too large),N/A

@@ -1,7 +1,0 @@
-dataset,T,nodes,edges,wall_sec,peak_ram_mb
-blogcatalog,1,10312,333983,7.3,N/A
-blogcatalog,10,10312,333983,102.5,N/A
-ppi,1,3890,76584,1.3,N/A
-ppi,10,3890,76584,8.5,N/A
-wikipedia,1,4777,184812,1.9,N/A
-wikipedia,10,4777,184812,22.5,N/A
