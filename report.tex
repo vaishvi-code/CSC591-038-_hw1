@@ -106,6 +106,12 @@ Pipeline: (1)~$A$ sparse; (2)~$M$ built as dense $N{\times}N$ float64 (both code
 (4)~$N{\times}128$ embedding is 100\% dense. All adjacency matrices are verified symmetric
 (\texttt{(A!=A.T).nnz==0}); density $=$ \texttt{nnz(A)}/N$^2$.
 
+\textbf{Why $Y$ densifies:} $M$ sums powers of the normalized transition matrix $(D^{-1}A)^r$ ($1 \le r \le T$), so every pair of nodes connected within $T$ steps receives a positive entry.
+Log truncation $\log(\max(M,1))$ then retains all entries with $M \ge 1$.
+At $T{=}1$, only direct neighbours ($r=1$) are nonzero, so $Y$ stays as sparse as $A$ (${\approx}0.5$--$0.8\%$).
+At $T{=}10$, multi-hop reachability in small-world graphs densifies $Y$ to 50--95\%.
+This explains why $N{\times}N$ storage is unavoidable, imposing $\mathcal{O}(N^2)$ memory regardless of graph sparsity.
+
 \begin{table}[h]
 \centering\vspace{-4pt}
 \caption{Density (\% entries $>0$) at each pipeline stage. All matrices are symmetric;
