@@ -173,7 +173,9 @@ that is tight when those eigenvalues are small.
 ($N^2{\times}8$ bytes per dense matrix copy). No direct peak RSS measurement was taken;
 reported values are theoretical single-copy estimates in MiB. Actual peak RSS will be higher
 due to interpreter and SVD workspace overhead.
-Both windows share the same dominant memory term---eigenpair approximation reduces FLOPs, not memory.}
+Theoretically, both windows are lower-bounded by the dense $N{\times}N$ term ($N^2{\times}8$ bytes);
+however, actual runtime peak memory depends on implementation details such as in-place operations
+versus temporary array copies during thresholding and factorization.}
 \label{tab:timing}
 \small
 \begin{tabular}{llrrrr}
@@ -208,10 +210,13 @@ Actual runtime RSS will exceed this due to Python interpreter overhead, sparse m
 and SVD workspace allocations.
 Flickr ($N^2{\times}8\approx52$~GB) exceeds the 32~GB local limit; the naive three-copy
 \texttt{np.log(np.maximum(M,\,1))} would consume $\approx$156~GB.
-Time scaling: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) yields 4.1$\times$ more time
-for both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$); three points cannot pin down an exponent
-precisely, but the trend is sub-quadratic. SVD dominates at $T{=}1$ (7.7 of 9.5~s, BlogCatalog);
-construction dominates at $T{=}10$ (14.1 of 21.4~s).
+Time scaling is roughly sub-quadratic between the smallest and largest graphs:
+2.65$\times$ more nodes (PPI $\to$ BlogCatalog) yields 4.1$\times$ more time at both
+$T{=}1$ (2.3 $\to$ 9.5~s) and $T{=}10$ (5.1 $\to$ 21.4~s), corresponding to $\approx N^{1.45}$
+across endpoints. However, the $T{=}10$ curve is not a clean power law: it remains flat
+between PPI and Wikipedia (5.1~s each, where spectral eigenpair overhead balances smaller graph size)
+before jumping 4.2$\times$ to BlogCatalog ($\approx N^{1.9}$ over that step).
+SVD dominates at $T{=}1$ (7.7 of 9.5~s, BlogCatalog); construction dominates at $T{=}10$ (14.1 of 21.4~s).
 
 %% =========================================================
 \section{Closed-Form Factorization vs.\ Stochastic Training}
