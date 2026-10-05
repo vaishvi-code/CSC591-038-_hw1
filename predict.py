@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 def construct_indicator(y_score, y):
     # rank the labels by the scores directly
-    num_label = np.sum(y, axis=1, dtype=np.int)
+    num_label = np.sum(y, axis=1, dtype=int)
     y_sort = np.fliplr(np.argsort(y_score, axis=1))
-    y_pred = np.zeros_like(y, dtype=np.int)
+    y_pred = np.zeros_like(y, dtype=int)
     for i in range(y.shape[0]):
         for j in range(num_label[i]):
             y_pred[i, y_sort[i, j]] = 1
@@ -53,7 +53,7 @@ def load_w2v_feature(file):
 def load_label(file, variable_name="group"):
     data = scipy.io.loadmat(file)
     logger.info("loading mat file %s", file)
-    label = data[variable_name].todense().astype(np.int)
+    label = data[variable_name].todense().astype(int)
     label = np.array(label)
     print(label.shape, type(label), label.min(), label.max())
     return label
@@ -71,8 +71,7 @@ def predict_cv(X, y, train_ratio=0.2, n_splits=10, random_state=0, C=1.):
         clf = OneVsRestClassifier(
                 LogisticRegression(
                     C=C,
-                    solver="liblinear",
-                    multi_class="ovr"),
+                    solver="liblinear"),
                 n_jobs=-1)
         clf.fit(X_train, y_train)
         y_score = clf.predict_proba(X_test)

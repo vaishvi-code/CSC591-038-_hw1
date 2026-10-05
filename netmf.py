@@ -7,15 +7,13 @@
 
 import scipy.io
 import scipy.sparse as sparse
+import scipy.sparse.linalg
 from scipy.sparse import csgraph
 import numpy as np
 import argparse
 import logging
-import theano
-from theano import tensor as T
 
 logger = logging.getLogger(__name__)
-theano.config.exception_verbosity='high'
 
 
 def load_adjacency_matrix(file, variable_name="network"):
@@ -50,17 +48,24 @@ def approximate_normalized_graph_laplacian(A, rank, which="LA"):
 def approximate_deepwalk_matrix(evals, D_rt_invU, window, vol, b):
     evals = deepwalk_filter(evals, window=window)
     X = sparse.diags(np.sqrt(evals)).dot(D_rt_invU.T).T
-    m = T.matrix()
-    mmT = T.dot(m, m.T) * (vol/b)
-    f = theano.function([m], T.log(T.maximum(mmT, 1)))
-    Y = f(X.astype(theano.config.floatX))
+    mmT = np.dot(X, X.T)
+    mmT *= (vol / b)               # in-place: avoids a second N×N copy
+    np.maximum(mmT, 1, out=mmT)   # in-place: avoids a third N×N copy
+    np.log(mmT, out=mmT)          # in-place log
     logger.info("Computed DeepWalk matrix with %d non-zero elements",
-            np.count_nonzero(Y))
-    return sparse.csr_matrix(Y)
+            np.count_nonzero(mmT))
+    return mmT  # return dense array; skip CSR conversion (saves ~37 GB)
 
 def svd_deepwalk_matrix(X, dim):
-    u, s, v = sparse.linalg.svds(X, dim, return_singular_vectors="u")
-    # return U \Sigma^{1/2}
+    if sparse.issparse(X):
+        # small-window path: sparse matrix, use ARPACK
+        u, s, v = sparse.linalg.svds(X, dim, return_singular_vectors="u")
+    else:
+        # large-window path: dense N×N array, use randomized SVD (memory-efficient)
+        from sklearn.utils.extmath import randomized_svd
+        logger.info("Running randomized SVD (dense matrix, dim=%d)", dim)
+        u, s, _ = randomized_svd(X, n_components=dim, random_state=0)
+    # return U Sigma^{1/2}
     return sparse.diags(np.sqrt(s)).dot(u.T).T
 
 
@@ -102,9 +107,7 @@ def direct_compute_deepwalk_matrix(A, window, b):
     S *= vol / window / b
     D_rt_inv = sparse.diags(d_rt ** -1)
     M = D_rt_inv.dot(D_rt_inv.dot(S).T)
-    m = T.matrix()
-    f = theano.function([m], T.log(T.maximum(m, 1)))
-    Y = f(M.todense().astype(theano.config.floatX))
+    Y = np.log(np.maximum(M.toarray(), 1))
     return sparse.csr_matrix(Y)
 
 def netmf_small(args):
