@@ -108,20 +108,22 @@ Pipeline: (1)~$A$ sparse; (2)~$M$ built as dense $N{\times}N$ float64 (both code
 
 \begin{table}[h]
 \centering\vspace{-4pt}
-\caption{Density (\% entries $>0$) at each pipeline stage. All matrices are symmetric; density $=$ \texttt{nnz(A)}/N$^2$.
+\caption{Density (\% entries $>0$) at each pipeline stage. All matrices are symmetric;
+density $=$ \texttt{nnz(A)}/N$^2$ where \texttt{nnz} includes diagonal entries (self-loops).
+PPI has 894 and Wikipedia 222 self-loops, so \texttt{nnz(A)} $\neq 2|E|$ for those datasets.
 $T{=}10$ densities measured directly from the materialised matrix.}
 \label{tab:sparsity}
 \small
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-\textbf{Dataset} & $N$ & \textbf{$A$ density} & \textbf{$Y$ ($T{=}1$)} & \textbf{$Y$ ($T{=}10$)} & \textbf{Embed.} \\
+\textbf{Dataset} & $N$ & \texttt{nnz(A)} & \textbf{$A$ density} & \textbf{$Y$ ($T{=}1$)} & \textbf{$Y$ ($T{=}10$)} & \textbf{Embed.} \\
 \midrule
-PPI         &  3,890 & 0.506\% & 0.499\% & 50.0\% & 100\% \\
-Wikipedia   &  4,777 & 0.810\% & 0.718\% & 94.9\% & 100\% \\
-BlogCatalog & 10,312 & 0.628\% & 0.605\% & 91.9\% & 100\% \\
-Flickr      & 80,513 & 0.182\% & OOM & OOM & --- \\
+PPI         &  3,890 &  76,584$^\dagger$ & 0.506\% & 0.499\% & 50.0\% & 100\% \\
+Wikipedia   &  4,777 & 184,812$^\dagger$ & 0.810\% & 0.718\% & 94.9\% & 100\% \\
+BlogCatalog & 10,312 & 667,966           & 0.628\% & 0.605\% & 91.9\% & 100\% \\
+Flickr      & 80,513 & ---               & 0.182\% & OOM & OOM & --- \\
 \bottomrule
-\multicolumn{6}{l}{\small Flickr OOMs locally; $N^2{\times}8\approx52$~GB $>$ 32~GB RAM.}
+\multicolumn{7}{l}{\small $^\dagger$Includes self-loops: PPI 894, Wikipedia 222. Flickr OOMs; $N^2{\times}8\approx52$~GB $>$ 32~GB.}
 \end{tabular}
 \end{table}
 
@@ -150,10 +152,10 @@ Flickr      & 80,513 & 0.182\% & OOM & OOM & --- \\
 Spectra drop steeply in the first 20--50 ranks, then flatten; $d{=}128$ lies in this flat tail.
 At $T{=}1$, 128 singular values retain 63--71\% of squared spectral energy---roughly 30--37\% discarded.
 The paper chooses $d{=}128$ for embedding compactness, accepting this truncation cost.
-At $T{=}10$ the spectrum concentrates sharply (94--99\% retained), because multi-step random-walk
-smoothing transfers spectral mass to top components. This also explains why Theorem~3.5 of~\cite{netmf}
-(which bounds the eigenpair approximation error of $D^{-1/2}AD^{-1/2}$, separately from the SVD truncation
-of $Y$) gives a small approximation error when the discarded eigenvalues of the normalized adjacency are small.
+At $T{=}10$ the spectrum concentrates sharply (94--99\% retained, from logs).
+Separately, Theorem~3.5 of~\cite{netmf} bounds the error of the rank-256 eigenpair
+approximation of $D^{-1/2}AD^{-1/2}$ in terms of its discarded eigenvalues---a bound
+that is tight when those eigenvalues are small.
 
 %% =========================================================
 \section{Empirical Cost Analysis \& Scalability}
@@ -161,15 +163,16 @@ of $Y$) gives a small approximation error when the discarded eigenvalues of the 
 
 \begin{table}[h]
 \centering\vspace{-4pt}
-\caption{Measured construction (build) and factorization (SVD) times, and peak RSS (psutil, delta over baseline).
-Measured peak RSS: 122~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC); theoretical $N^2{\times}8$ bytes: 115, 174, 811~MiB.
-Both windows incur the same peak---eigenpair approximation reduces FLOPs, not memory.}
+\caption{Construction (build) and factorization (SVD) times, and estimated peak memory
+($N^2{\times}8$ bytes per dense matrix copy). Reported values are $N^2{\times}8$ in MiB; actual
+peak RSS will be higher by interpreter and SVD workspace overhead.
+Both windows share the same dominant memory term---eigenpair approximation reduces FLOPs, not memory.}
 \label{tab:timing}
 \small
 \begin{tabular}{llrrrr}
 \toprule
 \textbf{Dataset} & \textbf{Win.} &
-  \textbf{Build (s)} & \textbf{SVD (s)} & \textbf{Total (s)} & \textbf{Peak RSS (MiB)} \\
+  \textbf{Build (s)} & \textbf{SVD (s)} & \textbf{Total (s)} & \textbf{Est.\ mem.\ (MiB)} \\
 \midrule
 \multirow{2}{*}{PPI}         & $T{=}1$  &  0.2 &  2.0 &  2.3 & \multirow{2}{*}{122} \\
                               & $T{=}10$ &  2.5 &  2.6 &  5.1 & \\
@@ -192,10 +195,10 @@ Flickr & both & \multicolumn{3}{c}{OOM --- $N^2{\times}8\approx52$~GB $>$ 32~GB 
   \label{fig:scaling}
 \end{figure}
 
-Measured peak RSS: 122, 174, 811~MiB (psutil delta); theoretical $N^2{\times}8$: 115, 174, 811~MiB---close
-but not identical, the difference reflecting eigenvector workspace. Flickr ($N^2{\times}8\approx52$~GB)
-exceeds the 32~GB local limit; a single dense copy fills the machine, and the naive three-copy
-\texttt{np.log(np.maximum(M,\,1))} would peak at $\approx$145~GB.
+Estimated peak memory ($N^2{\times}8$): 115~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC);
+actual RSS will exceed this by interpreter and workspace overhead.
+Flickr ($N^2{\times}8\approx52$~GB) exceeds the 32~GB local limit; the naive three-copy
+\texttt{np.log(np.maximum(M,\,1))} would consume $\approx$145~GB.
 Time scaling: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) yields 4.1$\times$ more time
 for both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$); three points cannot pin down an exponent
 precisely, but the trend is sub-quadratic. SVD dominates at $T{=}1$ (7.7 of 9.5~s, BlogCatalog);
