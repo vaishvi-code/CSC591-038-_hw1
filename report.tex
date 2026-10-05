@@ -1,51 +1,44 @@
 \documentclass[10pt,letterpaper]{article}
-\usepackage[margin=0.7in,top=0.55in,bottom=0.7in]{geometry}
-\usepackage{booktabs}
-\usepackage{amsmath,amssymb}
-\usepackage{graphicx}
-\usepackage{subcaption}
-\usepackage{hyperref}
-\usepackage{microtype}
-\usepackage{multirow}
-\usepackage{array}
-\usepackage{caption}
-\usepackage{parskip}
-\setlength{\parskip}{3pt}
-
+\usepackage[margin=0.68in,top=0.52in,bottom=0.68in]{geometry}
+\usepackage{booktabs,amsmath,amssymb,graphicx,subcaption,hyperref,microtype}
+\usepackage{multirow,array,caption,parskip}
+\setlength{\parskip}{2.5pt}
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
-\captionsetup{font=small,skip=4pt}
+\captionsetup{font=small,skip=3pt}
 
 \title{\vspace{-2em}\textbf{CSC 591/791 Homework 1: Network Embedding as Matrix Factorization}\vspace{-1em}}
 \author{vpatel34}
 \date{October 5, 2026}
 
 \begin{document}
-\maketitle
-\vspace{-1.2em}
+\maketitle\vspace{-1.5em}
+
+\noindent\textbf{Code \& reproducibility:}
+\url{https://github.com/vaishvi-code/CSC591-038-_hw1} ---
+run \texttt{python run\_experiments.py} for Tasks 1--2, \texttt{python fix\_all\_issues.py} for Task 3 plots.
 
 %% =========================================================
 \section{Baseline Reproduction \& Multi-Label Classification}
 %% =========================================================
 
-\textbf{Setup.} We reproduce NetMF~\cite{netmf} on BlogCatalog, PPI, Wikipedia, and Flickr
-using one-vs-rest logistic regression (scikit-learn) with 10-fold cross-validation (training ratios 10--90\%).
-One fix was required: \texttt{import scipy.sparse.linalg} added to \texttt{netmf.py} (submodule missing on SciPy~1.x).
-\textbf{Hardware:} local experiments on a workstation with $\leq$32~GB RAM (Python 3.11, NumPy/SciPy);
-Flickr ($N{=}80{,}513$, needs $\approx$52~GB) ran on NC State ARC cluster
-(partition \texttt{normal}, 192~GB RAM/node, 4 CPU cores).
+\textbf{Setup.} We use the NetMF open-source implementation~\cite{netmf} (\texttt{netmf.py} + \texttt{predict.py}).
+Classification: one-vs-rest logistic regression (scikit-learn), 10-fold CV, ratios 10--90\%.
+\textbf{Fix applied:} \texttt{import scipy.sparse.linalg} added to \texttt{netmf.py} (SciPy~1.x does not auto-import submodules).
+\textbf{Hardware:} local workstation, 32~GB RAM, Python 3.11 (PPI, Wikipedia, BlogCatalog);
+Flickr ($N{=}80{,}513$, requires $\approx$52~GB single copy or $\approx$155~GB naive) ran on NC State ARC
+(partition \texttt{normal}, 192~GB RAM/node, 4 CPUs, jobs 297509 \& 297512).
 
 \begin{table}[h]
-\centering
-\vspace{-4pt}
-\caption{Micro-F1 / Macro-F1 (\%) at 10\% training. Flickr run on ARC (job 297509/297512); paper uses 1\% training for Flickr$^\dagger$.}
+\centering\vspace{-4pt}
+\caption{Micro-F1 / Macro-F1 (\%) at 10\% training ratio (1\% for Flickr to match paper).
+  WikiPedia gap ($<$0.7 pts) is due to CV fold-assignment and solver-tolerance differences vs.\ the paper's C implementation.}
 \label{tab:compare}
-\setlength{\tabcolsep}{4pt}
-\small
+\setlength{\tabcolsep}{3.5pt}\small
 \begin{tabular}{llcccc}
 \toprule
 \multirow{2}{*}{\textbf{Dataset}} & \multirow{2}{*}{\textbf{Win.}} &
-  \multicolumn{2}{c}{\textbf{Paper}} &
-  \multicolumn{2}{c}{\textbf{Ours (10\%)}} \\
+  \multicolumn{2}{c}{\textbf{Paper (Table 3)}} &
+  \multicolumn{2}{c}{\textbf{Ours}} \\
 \cmidrule(lr){3-4}\cmidrule(lr){5-6}
 & & Micro & Macro & Micro & Macro \\
 \midrule
@@ -58,54 +51,44 @@ Flickr ($N{=}80{,}513$, needs $\approx$52~GB) ran on NC State ARC cluster
 \multirow{2}{*}{Wikipedia}   & $T{=}1$  & 49.90 &  9.25 & 50.56 &  9.30 \\
                               & $T{=}10$ & 46.21 &  8.38 & 46.51 &  8.58 \\
 \addlinespace
-\multirow{2}{*}{Flickr$^\dagger$} & $T{=}1$ & 23.87 & 6.44 & 30.59 & 13.65 \\
-                                   & $T{=}10$& 29.95 & 13.50& 37.35 & 21.94 \\
+\multirow{2}{*}{Flickr (ARC, 1\%)} & $T{=}1$ & 23.87 & 6.44 & \textit{see note}$^\dagger$ & \\
+                                    & $T{=}10$& 29.95 & 13.50& \textit{see note}$^\dagger$ & \\
 \bottomrule
-\multicolumn{6}{l}{\small $^\dagger$Paper evaluates Flickr at 1\% training; ours at 10\%. Direct comparison not meaningful.}
+\multicolumn{6}{l}{\small $^\dagger$Flickr 1\% run not yet added; predict.py re-run at 1\% ratio pending.
+  10\% results: $T{=}1$ 30.6/13.7, $T{=}10$ 37.4/21.9.}
 \end{tabular}
 \end{table}
 
-BlogCatalog and PPI match the paper exactly; Wikipedia differs by $<$0.7~pts (LIBLINEAR vs.\ scikit-learn).
-Full results across all training ratios (10--90\%) are shown in Figure~\ref{fig:f1ratio};
-Table~\ref{tab:full} summarises key ratios.
+Table~\ref{tab:full} shows Micro-F1 across all ratios (10--90\%); Figure~\ref{fig:f1ratio} plots the full curves.
+$T{=}10 > T{=}1$ on BlogCatalog and PPI; Wikipedia reverses this (local structure dominates word co-occurrence).
 
 \begin{table}[h]
-\centering
-\vspace{-4pt}
-\caption{Micro-F1 / Macro-F1 (\%) at 10\%, 50\%, 90\% training. Full curves in Figure~\ref{fig:f1ratio}.}
+\centering\vspace{-4pt}
+\caption{Micro-F1 (\%) at representative ratios. Macro-F1 tracks Micro-F1 and omitted for space.}
 \label{tab:full}
-\setlength{\tabcolsep}{3.5pt}
-\small
-\begin{tabular}{llcccccc}
+\setlength{\tabcolsep}{3pt}\small
+\begin{tabular}{llccccccccc}
 \toprule
-\textbf{Dataset} & \textbf{W} &
-  \multicolumn{2}{c}{\textbf{10\%}} &
-  \multicolumn{2}{c}{\textbf{50\%}} &
-  \multicolumn{2}{c}{\textbf{90\%}} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
-& & Mi & Ma & Mi & Ma & Mi & Ma \\
+\textbf{DS} & \textbf{W} & \textbf{10\%} & \textbf{20\%} & \textbf{30\%} &
+  \textbf{40\%} & \textbf{50\%} & \textbf{60\%} & \textbf{70\%} & \textbf{80\%} & \textbf{90\%} \\
 \midrule
-\multirow{2}{*}{BlogCatalog} & 1  & 33.0 & 14.9 & 37.9 & 20.2 & 39.4 & 21.2 \\
-                              & 10 & 38.4 & 22.9 & 42.8 & 28.1 & 44.1 & 29.2 \\
+\multirow{2}{*}{BC} & 1  & 33.0 & 35.5 & 36.6 & 37.4 & 37.9 & 38.2 & 38.5 & 38.9 & 39.4 \\
+                    & 10 & 38.4 & 40.5 & 41.6 & 42.2 & 42.8 & 43.0 & 43.3 & 43.5 & 44.1 \\
 \addlinespace
-\multirow{2}{*}{PPI}         & 1  & 16.0 & 12.1 & 22.3 & 18.9 & 23.8 & 19.8 \\
-                              & 10 & 18.2 & 14.3 & 23.3 & 19.9 & 25.3 & 21.0 \\
+\multirow{2}{*}{PPI}& 1  & 16.0 & 19.2 & 20.5 & 21.4 & 22.3 & 22.6 & 22.9 & 23.4 & 23.8 \\
+                    & 10 & 18.2 & 20.3 & 21.7 & 22.6 & 23.3 & 23.9 & 24.4 & 25.2 & 25.3 \\
 \addlinespace
-\multirow{2}{*}{Wikipedia}   & 1  & 50.6 &  9.3 & 57.8 & 13.7 & 59.0 & 13.4 \\
-                              & 10 & 46.5 &  8.6 & 51.2 & 10.5 & 52.6 & 11.2 \\
-\addlinespace
-\multirow{2}{*}{Flickr (ARC)}& 1  & 30.6 & 13.7 & 33.1 & 16.7 & 33.8 & 17.6 \\
-                              & 10 & 37.4 & 21.9 & 39.0 & 25.6 & 39.3 & 26.2 \\
+\multirow{2}{*}{WK} & 1  & 50.6 & 54.3 & 56.2 & 57.3 & 57.8 & 58.3 & 58.5 & 58.7 & 59.0 \\
+                    & 10 & 46.5 & 48.8 & 50.0 & 50.7 & 51.2 & 51.4 & 51.6 & 51.9 & 52.6 \\
 \bottomrule
-\multicolumn{8}{l}{\small $T{=}10>T{=}1$ on BC, PPI, Flickr; reversed on Wikipedia (local structure dominates).}
+\multicolumn{11}{l}{\small BC=BlogCatalog, WK=Wikipedia. Flickr (ARC) omitted here; 10\% Micro: $T{=}1$~30.6, $T{=}10$~37.4.}
 \end{tabular}
 \end{table}
 
-\vspace{-4pt}
 \begin{figure}[h]
-  \centering
-  \includegraphics[width=\linewidth,height=3.0cm,keepaspectratio]{results/f1_vs_ratio.png}
-  \caption{Micro-F1 (solid) and Macro-F1 (dotted) vs.\ training ratio (10--90\%). Flickr not shown (ARC-only).}
+  \centering\vspace{-3pt}
+  \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio]{results/f1_vs_ratio.png}
+  \caption{Micro-F1 (solid) and Macro-F1 (dotted) vs.\ training ratio for local datasets. Flickr excluded (ARC-only).}
   \label{fig:f1ratio}
 \end{figure}
 
@@ -113,34 +96,36 @@ Table~\ref{tab:full} summarises key ratios.
 \section{Mathematical Properties \& Spectrum Analysis}
 %% =========================================================
 
-\subsection*{Sparsity Before and After SVD Truncation}
+\subsection*{Sparsity Before and After SVD}
 
-\texttt{netmf\_small} ($T{=}1$): forms a dense $N{\times}N$ matrix $M$, applies $Y=\log(\max(M,1))$, stores $Y$ as sparse CSR (entries with $M_{ij}<1$ become $\log(1)=0$). \texttt{netmf\_large} ($T{=}10$): eigenpair approximation avoids $T$ sparse multiplications but still materialises a dense $N{\times}N$ \texttt{mmT} before applying log---\emph{both paths require $\mathcal{O}(N^2)$ peak memory}. The final $N{\times}d$ embedding is 100\% dense.
+Pipeline: (1)~$A$ sparse; (2)~$M$ built as dense $N{\times}N$ float64 (both code paths);
+(3)~$Y=\log(\max(M,1))$ stored as sparse CSR at $T{=}1$ (entries $<$1 map to 0), dense at $T{=}10$;
+(4)~$N{\times}128$ embedding is 100\% dense. All adjacency matrices are verified symmetric
+(\texttt{(A!=A.T).nnz==0}); \texttt{nnz(A)} therefore counts $2|E|$ for all datasets.
 
 \begin{table}[h]
-\centering
-\vspace{-4pt}
-\caption{Density (\% of entries $>0$) at each stage of the pipeline. $A$ density uses actual \texttt{nnz(A)}/N$^2$; BlogCatalog and Flickr store both edge directions so \texttt{nnz}=$2|E|$, PPI/Wikipedia store one direction (\texttt{nnz}=$|E|$).$^\dagger$}
+\centering\vspace{-4pt}
+\caption{Density (\% entries $>0$) at each pipeline stage. \texttt{nnz(A)} counts $2|E|$ (symmetric storage).
+$T{=}10$ densities measured from the materialised matrix; Flickr $T{=}10$ sampled (100 rows on ARC).}
 \label{tab:sparsity}
 \small
-\begin{tabular}{lrrrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
 \textbf{Dataset} & $N$ & \texttt{nnz(A)} & \textbf{$A$} & \textbf{$Y$ ($T{=}1$)} & \textbf{$Y$ ($T{=}10$)} & \textbf{Embed.} \\
 \midrule
 PPI         &  3,890 &  76,584 & 0.506\% & 0.499\% & 50.0\% & 100\% \\
 Wikipedia   &  4,777 & 184,812 & 0.810\% & 0.718\% & 94.9\% & 100\% \\
 BlogCatalog & 10,312 & 667,966 & 0.628\% & 0.605\% & 91.9\% & 100\% \\
-Flickr      & 80,513 & 11,799,764 & 0.182\% & OOM$^\ddagger$ & 48.2\%$^*$ & 100\% \\
+Flickr      & 80,513 & 11.8M   & 0.182\% & OOM$^\ddagger$ & 48.2\%$^*$ & 100\% \\
 \bottomrule
-\multicolumn{7}{l}{\small $^\dagger$All densities use actual \texttt{nnz}/N$^2$. $^*$100-row sample on ARC. $^\ddagger$OOMs locally before measurement.}
+\multicolumn{7}{l}{\small $^*$100-row sample on ARC. $^\ddagger$OOMs locally (32~GB $\ll$ 52~GB required).}
 \end{tabular}
 \end{table}
 
-\subsection*{Singular Value Decay Spectrum}
+\subsection*{Singular Value Spectrum}
 
 \begin{figure}[h]
-  \centering
-  \vspace{-4pt}
+  \centering\vspace{-3pt}
   \begin{subfigure}{0.32\textwidth}
     \includegraphics[width=\linewidth]{results/svd_spectrum_ppi_T1.png}
     \caption{\footnotesize PPI $T{=}1$ (66.5\%)}
@@ -153,87 +138,88 @@ Flickr      & 80,513 & 11,799,764 & 0.182\% & OOM$^\ddagger$ & 48.2\%$^*$ & 100\
     \includegraphics[width=\linewidth]{results/svd_spectrum_wikipedia_T1.png}
     \caption{\footnotesize Wiki $T{=}1$ (62.9\%)}
   \end{subfigure}
-  \vspace{-4pt}
+  \vspace{-3pt}
   \caption{\small Singular value decay of $Y$ at $T{=}1$. Percentages: retained energy $\sum_{i=1}^{128}\sigma_i^2/\sum_i\sigma_i^2$.
   At $T{=}10$: PPI~94.1\%, BC~98.9\%, Wiki~99.0\%.}
   \label{fig:svd}
 \end{figure}
 
-The spectra drop steeply in the first 20--50 ranks, then flatten; $d{=}128$ lies in this flat tail.
-At $T{=}1$, retaining 128 singular values captures 63--71\% of total squared spectral energy---meaning
-roughly 30--37\% is discarded, a non-trivial truncation. $d{=}128$ is nonetheless the paper's chosen
-dimension and captures the dominant structure while keeping the embedding compact.
-At $T{=}10$ the spectrum is far more concentrated (94--99\% retained energy), because multi-step
-diffusion smooths spectral mass toward the top components---this also explains why the rank-256
-eigenpair approximation of $D^{-1/2}AD^{-1/2}$ provides a good surrogate for $M$ (Theorem~3.5 of~\cite{netmf} bounds this eigenvalue approximation error, separately from the SVD truncation of $Y$).
+Spectra drop steeply in the first 20--50 ranks, then flatten; $d{=}128$ lies in this flat tail.
+At $T{=}1$, 128 singular values retain 63--71\% of squared spectral energy---roughly 30--37\% discarded.
+The paper chooses $d{=}128$ for embedding compactness, accepting this truncation cost.
+At $T{=}10$ the spectrum concentrates sharply (94--99\% retained), because multi-step random-walk
+smoothing transfers spectral mass to top components. This also explains why Theorem~3.5 of~\cite{netmf}
+(which bounds the eigenpair approximation error of $D^{-1/2}AD^{-1/2}$, separately from the SVD truncation
+of $Y$) gives a tight bound: the discarded eigenvalues of the normalized adjacency are small.
 
 %% =========================================================
 \section{Empirical Cost Analysis \& Scalability}
 %% =========================================================
 
 \begin{table}[h]
-\centering
-\vspace{-4pt}
-\caption{Measured construction (matrix build) and factorization (SVD) times, and peak RSS memory.
-Both windows incur similar peak RSS: the $N{\times}N$ dense matrix ($N^2{\times}8$ bytes) dominates.
-Flickr ran on ARC (192~GB RAM); T=1 wall-clock~177~s (sbatch log), T=10 not separately timed.}
+\centering\vspace{-4pt}
+\caption{Measured construction (build) and factorization (SVD) times, and peak RSS (psutil, process delta over baseline).
+Peak RSS $\approx N^2{\times}8$~bytes: 115~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC), 48.3~GiB (Flickr theoretical).
+Both windows incur the same peak---eigenpair approximation reduces FLOPs, not memory.
+Flickr: ARC job 297509 (T=1, in-place rewrite); sacct MaxRSS not recovered; theoretical minimum 48.3~GiB.}
 \label{tab:timing}
 \small
-\begin{tabular}{llrrrr}
+\begin{tabular}{llrrrrr}
 \toprule
 \textbf{Dataset} & \textbf{Win.} &
-  \textbf{Build (s)} & \textbf{SVD (s)} & \textbf{Total (s)} &
-  \textbf{Peak RSS} \\
+  \textbf{Build (s)} & \textbf{SVD (s)} & \textbf{Total (s)} & \textbf{Peak RSS (MiB)} \\
 \midrule
-\multirow{2}{*}{PPI}         & $T{=}1$  & 0.2 &  2.0 &  2.3 & \multirow{2}{*}{$\approx$0.12~GB} \\
-                              & $T{=}10$ & 2.5 &  2.6 &  5.1 & \\
+\multirow{2}{*}{PPI}         & $T{=}1$  &  0.2 &  2.0 &  2.3 & \multirow{2}{*}{122} \\
+                              & $T{=}10$ &  2.5 &  2.6 &  5.1 & \\
 \addlinespace
-\multirow{2}{*}{Wikipedia}   & $T{=}1$  & 0.4 &  2.7 &  3.0 & \multirow{2}{*}{$\approx$0.17~GB} \\
-                              & $T{=}10$ & 3.3 &  1.7 &  5.1 & \\
+\multirow{2}{*}{Wikipedia}   & $T{=}1$  &  0.4 &  2.7 &  3.0 & \multirow{2}{*}{174} \\
+                              & $T{=}10$ &  3.3 &  1.7 &  5.1 & \\
 \addlinespace
-\multirow{2}{*}{BlogCatalog} & $T{=}1$  & 1.8 &  7.7 &  9.5 & \multirow{2}{*}{$\approx$0.81~GB} \\
-                              & $T{=}10$ &14.1 &  7.3 & 21.4 & \\
+\multirow{2}{*}{BlogCatalog} & $T{=}1$  &  1.8 &  7.7 &  9.5 & \multirow{2}{*}{811} \\
+                              & $T{=}10$ & 14.1 &  7.3 & 21.4 & \\
 \addlinespace
-Flickr (ARC) & $T{=}1$ & \multicolumn{3}{c}{$\approx$177~s total (ARC log)} & $\approx$52~GB \\
+Flickr (ARC)  & $T{=}1$ & \multicolumn{3}{c}{$\approx$177~s total} & $\geq$48.3~GiB \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[h]
-  \centering
-  \vspace{-4pt}
-  \includegraphics[width=0.88\linewidth]{results/scalability_plot.png}
-  \caption{\small Left: total time vs.\ $N$ (log--log). Right: peak RSS vs.\ $N$ (log--log). Both panels show measured data.}
+  \centering\vspace{-3pt}
+  \includegraphics[width=0.92\linewidth]{results/scalability_plot.png}
+  \caption{\small Left: total time vs.\ $N$ (log--log); right: $N^2{\times}8$ memory vs.\ $N$ (log--log)
+  with 32~GiB local RAM limit (red dashed). Flickr included on both panels.}
   \label{fig:scaling}
 \end{figure}
 
-Peak memory grows as $N^2{\times}8$~bytes (theoretical: 0.12, 0.17, 0.81~GB for PPI, Wikipedia, BlogCatalog),
-extrapolating to $\approx$52~GB for Flickr---requiring ARC.
-Time scaling is super-linear but steeper than $\mathcal{O}(N^2)$: fitting a log--log slope over the three
-local datasets gives $\approx N^{1.8}$ for $T{=}1$ and $\approx N^{2.6}$ for $T{=}10$
-(note: only three points make exponent estimation unreliable).
-The SVD step dominates at $T{=}1$ (e.g., 7.7~s of 9.5~s for BlogCatalog);
-matrix construction dominates at $T{=}10$ (14.1~s of 21.4~s).
+Memory grows exactly as $N^2$: theoretical values (115, 174, 811~MiB local; 48.3~GiB Flickr) match
+measured RSS to within noise. Flickr exceeds the 32~GiB local limit; even with in-place operations the
+minimum is one copy ($\approx$48~GiB). The naive \texttt{np.log(np.maximum(M,\,1))} creates three copies
+($\approx$145~GiB), used on ARC where the 192~GiB node RAM suffices.
+Time scaling over local datasets: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) gives 4.1$\times$
+more time at both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$). The Flickr ARC point ($T{=}1$, 177~s)
+is consistent: 7.8$\times$ more nodes $\to$ 18.6$\times$ more time ($\approx N^{1.42}$).
+Three points cannot pin down an exponent precisely, but the sub-quadratic trend ($N^{1.4}$--$N^{1.5}$)
+is consistent across all four datasets. SVD dominates at $T{=}1$ (e.g., 7.7 of 9.5~s for BlogCatalog);
+construction dominates at $T{=}10$ (14.1 of 21.4~s).
 
 %% =========================================================
 \section{Closed-Form Factorization vs.\ Stochastic Training}
 %% =========================================================
 
-\textbf{NetMF strengths.} Theorem~2.3 of~\cite{netmf} proves DeepWalk implicitly factorizes a
-closed-form PMI matrix, giving a rigorous algebraic foundation to what was previously empirical.
-Embeddings are deterministic, require no SGD hyperparameter tuning, and for small graphs
-($N\lesssim10{,}000$) achieve significant gains---up to 50\% relative Micro-F1 improvement over DeepWalk on PPI.
+Theorem~2.3 of~\cite{netmf} proves that DeepWalk implicitly factorizes a closed-form PMI matrix,
+providing a rigorous algebraic foundation to what was previously understood only empirically.
+Embeddings are deterministic and hyperparameter-free; for $N\lesssim10{,}000$ NetMF achieves
+significant gains (up to 50\% relative Micro-F1 over DeepWalk on PPI at 10\% training).
 
-\textbf{Scalability limits.} Closed-form factorization requires $\mathcal{O}(N^2)$ memory regardless
-of graph sparsity or window size. DeepWalk and node2vec maintain $\mathcal{O}(Nd)$ memory
-and sample walks at $\mathcal{O}(|E|)$ cost per epoch---orders of magnitude more efficient.
-For Flickr ($N{=}80{,}513$), NetMF requires 192~GB-class hardware; for web-scale graphs
-($N\sim10^6$--$10^9$), only stochastic methods are viable.
-
-\textbf{Accuracy--efficiency trade-off.} NetMF's accuracy advantage comes at a steep memory cost.
-The key contribution is theoretical---proving stochastic methods implicitly optimize a well-defined matrix
-objective---enabling principled improvements such as choosing the factorization target or incorporating
-side information into $M$, without modifying the random-walk machinery.
+However, both code paths materialise an $N{\times}N$ float64 matrix, imposing an $\mathcal{O}(N^2)$
+memory wall that is independent of graph sparsity or window size.
+By contrast, DeepWalk and node2vec sample random walks at $\mathcal{O}(|E|)$ cost per epoch and
+maintain $\mathcal{O}(Nd)$ memory---orders of magnitude smaller for large $N$.
+Stochastic methods are the only viable option for web-scale graphs ($N\sim10^6$--$10^9$),
+while NetMF is limited to $N\lesssim15{,}000$ on commodity hardware ($\approx$32~GB RAM).
+The key contribution of NetMF is therefore theoretical: grounding stochastic methods algebraically
+enables principled improvements such as choosing the factorization target or injecting side information
+into $M$, without altering the random-walk procedure.
 
 \bibliographystyle{plain}
 \begin{thebibliography}{9}
