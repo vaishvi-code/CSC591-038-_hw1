@@ -31,7 +31,7 @@ and could not be run locally; results are not reported.
 \begin{table}[h]
 \centering\vspace{-4pt}
 \caption{Micro-F1 / Macro-F1 (\%) at 10\% training ratio.
-  Wikipedia gap ($<$0.7 pts) is due to CV fold-assignment and solver-tolerance differences vs.\ the paper's C implementation.}
+  Wikipedia gap ($<$0.7 pts) is likely due to CV fold-assignment and solver-tolerance differences vs.\ the paper's C implementation~\cite{liblinear}.}
 \label{tab:compare}
 \setlength{\tabcolsep}{3.5pt}\small
 \begin{tabular}{llcccc}
@@ -58,29 +58,33 @@ Flickr & $T{=}1$  & 23.87 & 6.44 & \multicolumn{2}{c}{OOM on local hardware} \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:full} shows Micro-F1 across all ratios (10--90\%); Figure~\ref{fig:f1ratio} plots the full curves.
+Table~\ref{tab:full} and Figure~\ref{fig:f1ratio} show results across all ratios (10--90\%).
 $T{=}10 > T{=}1$ on BlogCatalog and PPI; Wikipedia reverses this (local structure dominates word co-occurrence).
 
 \begin{table}[h]
 \centering\vspace{-4pt}
-\caption{Micro-F1 (\%) at representative ratios. Macro-F1 tracks Micro-F1 and omitted for space.}
+\caption{Micro-F1 / Macro-F1 (\%) at 10\%, 50\%, 90\% training. Full curves in Figure~\ref{fig:f1ratio}.}
 \label{tab:full}
 \setlength{\tabcolsep}{3pt}\small
-\begin{tabular}{llccccccccc}
+\begin{tabular}{llcccccc}
 \toprule
-\textbf{DS} & \textbf{W} & \textbf{10\%} & \textbf{20\%} & \textbf{30\%} &
-  \textbf{40\%} & \textbf{50\%} & \textbf{60\%} & \textbf{70\%} & \textbf{80\%} & \textbf{90\%} \\
+\textbf{DS} & \textbf{W} &
+  \multicolumn{2}{c}{\textbf{10\%}} &
+  \multicolumn{2}{c}{\textbf{50\%}} &
+  \multicolumn{2}{c}{\textbf{90\%}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+& & Mi & Ma & Mi & Ma & Mi & Ma \\
 \midrule
-\multirow{2}{*}{BC} & 1  & 33.0 & 35.5 & 36.6 & 37.4 & 37.9 & 38.2 & 38.5 & 38.9 & 39.4 \\
-                    & 10 & 38.4 & 40.5 & 41.6 & 42.2 & 42.8 & 43.0 & 43.3 & 43.5 & 44.1 \\
+\multirow{2}{*}{BC} & 1  & 33.0 & 14.9 & 37.9 & 20.2 & 39.4 & 21.2 \\
+                    & 10 & 38.4 & 22.9 & 42.8 & 28.1 & 44.1 & 29.2 \\
 \addlinespace
-\multirow{2}{*}{PPI}& 1  & 16.0 & 19.2 & 20.5 & 21.4 & 22.3 & 22.6 & 22.9 & 23.4 & 23.8 \\
-                    & 10 & 18.2 & 20.3 & 21.7 & 22.6 & 23.3 & 23.9 & 24.4 & 25.2 & 25.3 \\
+\multirow{2}{*}{PPI}& 1  & 16.0 & 12.1 & 22.3 & 18.9 & 23.8 & 19.8 \\
+                    & 10 & 18.2 & 14.3 & 23.3 & 19.9 & 25.3 & 21.0 \\
 \addlinespace
-\multirow{2}{*}{WK} & 1  & 50.6 & 54.3 & 56.2 & 57.3 & 57.8 & 58.3 & 58.5 & 58.7 & 59.0 \\
-                    & 10 & 46.5 & 48.8 & 50.0 & 50.7 & 51.2 & 51.4 & 51.6 & 51.9 & 52.6 \\
+\multirow{2}{*}{WK} & 1  & 50.6 &  9.3 & 57.8 & 13.7 & 59.0 & 13.4 \\
+                    & 10 & 46.5 &  8.6 & 51.2 & 10.5 & 52.6 & 11.2 \\
 \bottomrule
-\multicolumn{11}{l}{\small BC=BlogCatalog, WK=Wikipedia. Flickr omitted (OOM).}
+\multicolumn{8}{l}{\small BC=BlogCatalog, WK=Wikipedia. Flickr omitted (OOM).}
 \end{tabular}
 \end{table}
 
@@ -100,24 +104,24 @@ $T{=}10 > T{=}1$ on BlogCatalog and PPI; Wikipedia reverses this (local structur
 Pipeline: (1)~$A$ sparse; (2)~$M$ built as dense $N{\times}N$ float64 (both code paths);
 (3)~$Y=\log(\max(M,1))$ stored as sparse CSR at $T{=}1$ (entries $<$1 map to 0), dense at $T{=}10$;
 (4)~$N{\times}128$ embedding is 100\% dense. All adjacency matrices are verified symmetric
-(\texttt{(A!=A.T).nnz==0}); \texttt{nnz(A)} therefore counts $2|E|$ for all datasets.
+(\texttt{(A!=A.T).nnz==0}); density $=$ \texttt{nnz(A)}/N$^2$.
 
 \begin{table}[h]
 \centering\vspace{-4pt}
-\caption{Density (\% entries $>0$) at each pipeline stage. \texttt{nnz(A)} counts $2|E|$ (symmetric storage).
-$T{=}10$ densities measured from the materialised matrix.}
+\caption{Density (\% entries $>0$) at each pipeline stage. All matrices are symmetric; density $=$ \texttt{nnz(A)}/N$^2$.
+$T{=}10$ densities measured directly from the materialised matrix.}
 \label{tab:sparsity}
 \small
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{lrrrrr}
 \toprule
-\textbf{Dataset} & $N$ & \texttt{nnz(A)} & \textbf{$A$} & \textbf{$Y$ ($T{=}1$)} & \textbf{$Y$ ($T{=}10$)} & \textbf{Embed.} \\
+\textbf{Dataset} & $N$ & \textbf{$A$ density} & \textbf{$Y$ ($T{=}1$)} & \textbf{$Y$ ($T{=}10$)} & \textbf{Embed.} \\
 \midrule
-PPI         &  3,890 &  76,584 & 0.506\% & 0.499\% & 50.0\% & 100\% \\
-Wikipedia   &  4,777 & 184,812 & 0.810\% & 0.718\% & 94.9\% & 100\% \\
-BlogCatalog & 10,312 & 667,966 & 0.628\% & 0.605\% & 91.9\% & 100\% \\
-Flickr      & 80,513 & ---     & 0.182\% & OOM & OOM & --- \\
+PPI         &  3,890 & 0.506\% & 0.499\% & 50.0\% & 100\% \\
+Wikipedia   &  4,777 & 0.810\% & 0.718\% & 94.9\% & 100\% \\
+BlogCatalog & 10,312 & 0.628\% & 0.605\% & 91.9\% & 100\% \\
+Flickr      & 80,513 & 0.182\% & OOM & OOM & --- \\
 \bottomrule
-\multicolumn{7}{l}{\small Flickr OOMs locally; $N^2{\times}8\approx52$~GB $>$ 32~GB RAM.}
+\multicolumn{6}{l}{\small Flickr OOMs locally; $N^2{\times}8\approx52$~GB $>$ 32~GB RAM.}
 \end{tabular}
 \end{table}
 
@@ -149,7 +153,7 @@ The paper chooses $d{=}128$ for embedding compactness, accepting this truncation
 At $T{=}10$ the spectrum concentrates sharply (94--99\% retained), because multi-step random-walk
 smoothing transfers spectral mass to top components. This also explains why Theorem~3.5 of~\cite{netmf}
 (which bounds the eigenpair approximation error of $D^{-1/2}AD^{-1/2}$, separately from the SVD truncation
-of $Y$) gives a tight bound: the discarded eigenvalues of the normalized adjacency are small.
+of $Y$) gives a small approximation error when the discarded eigenvalues of the normalized adjacency are small.
 
 %% =========================================================
 \section{Empirical Cost Analysis \& Scalability}
@@ -158,7 +162,7 @@ of $Y$) gives a tight bound: the discarded eigenvalues of the normalized adjacen
 \begin{table}[h]
 \centering\vspace{-4pt}
 \caption{Measured construction (build) and factorization (SVD) times, and peak RSS (psutil, delta over baseline).
-Peak RSS $\approx N^2{\times}8$~bytes: 115~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC).
+Measured peak RSS: 122~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC); theoretical $N^2{\times}8$ bytes: 115, 174, 811~MiB.
 Both windows incur the same peak---eigenpair approximation reduces FLOPs, not memory.}
 \label{tab:timing}
 \small
@@ -188,9 +192,10 @@ Flickr & both & \multicolumn{3}{c}{OOM --- $N^2{\times}8\approx52$~GB $>$ 32~GB 
   \label{fig:scaling}
 \end{figure}
 
-Measured peak RSS matches $N^2{\times}8$ bytes exactly (115, 174, 811~MiB). Flickr
-($N^2{\times}8\approx52$~GB) exceeds the 32~GB local RAM limit and is not run; the naive
-\texttt{np.log(np.maximum(M,\,1))} would peak at $\approx$145~GB (three copies).
+Measured peak RSS: 122, 174, 811~MiB (psutil delta); theoretical $N^2{\times}8$: 115, 174, 811~MiB---close
+but not identical, the difference reflecting eigenvector workspace. Flickr ($N^2{\times}8\approx52$~GB)
+exceeds the 32~GB local limit; a single dense copy fills the machine, and the naive three-copy
+\texttt{np.log(np.maximum(M,\,1))} would peak at $\approx$145~GB.
 Time scaling: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) yields 4.1$\times$ more time
 for both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$); three points cannot pin down an exponent
 precisely, but the trend is sub-quadratic. SVD dominates at $T{=}1$ (7.7 of 9.5~s, BlogCatalog);
@@ -202,15 +207,17 @@ construction dominates at $T{=}10$ (14.1 of 21.4~s).
 
 Theorem~2.3 of~\cite{netmf} proves that DeepWalk implicitly factorizes a closed-form PMI matrix,
 providing a rigorous algebraic foundation to what was previously understood only empirically.
-Embeddings are deterministic and hyperparameter-free; for $N\lesssim10{,}000$ NetMF achieves
-significant gains (up to 50\% relative Micro-F1 over DeepWalk on PPI at 10\% training).
+Embeddings are deterministic and require no SGD tuning (though NetMF still exposes hyperparameters
+$T$, $d$, and $b$); for $N\lesssim10{,}000$ NetMF achieves significant classification gains,
+as reported in~\cite{netmf}.
 
 However, both code paths materialise an $N{\times}N$ float64 matrix, imposing an $\mathcal{O}(N^2)$
 memory wall that is independent of graph sparsity or window size.
+On a 32~GB machine a single dense copy allows up to $N\approx63{,}000$ nodes;
+the naive three-copy implementation limits this to $N\approx36{,}500$.
 By contrast, DeepWalk and node2vec sample random walks at $\mathcal{O}(|E|)$ cost per epoch and
 maintain $\mathcal{O}(Nd)$ memory---orders of magnitude smaller for large $N$.
-Stochastic methods are the only viable option for web-scale graphs ($N\sim10^6$--$10^9$),
-while NetMF is limited to $N\lesssim15{,}000$ on commodity hardware ($\approx$32~GB RAM).
+Stochastic methods are the only viable option for web-scale graphs ($N\sim10^6$--$10^9$).
 The key contribution of NetMF is therefore theoretical: grounding stochastic methods algebraically
 enables principled improvements such as choosing the factorization target or injecting side information
 into $M$, without altering the random-walk procedure.
