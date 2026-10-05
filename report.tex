@@ -25,7 +25,7 @@ run \texttt{python run\_experiments.py} for Tasks 1--2, \texttt{python fix\_all\
 Classification: one-vs-rest logistic regression (scikit-learn), 10-fold CV, ratios 10--90\%.
 \textbf{Fix applied:} \texttt{import scipy.sparse.linalg} added to \texttt{netmf.py} (SciPy~1.x does not auto-import submodules).
 \textbf{Hardware:} local workstation, 32~GB RAM, Python 3.11.
-Flickr ($N{=}80{,}513$) requires $\approx$52~GB (single copy) or $\approx$145~GB (naive three-copy peak)
+Flickr ($N{=}80{,}513$) requires $\approx$52~GB (single copy) or $\approx$156~GB (naive three-copy peak)
 and could not be run locally; results are not reported.
 
 \begin{table}[h]
@@ -164,8 +164,9 @@ that is tight when those eigenvalues are small.
 \begin{table}[h]
 \centering\vspace{-4pt}
 \caption{Construction (build) and factorization (SVD) times, and estimated peak memory
-($N^2{\times}8$ bytes per dense matrix copy). Reported values are $N^2{\times}8$ in MiB; actual
-peak RSS will be higher by interpreter and SVD workspace overhead.
+($N^2{\times}8$ bytes per dense matrix copy). No direct peak RSS measurement was taken;
+reported values are theoretical single-copy estimates in MiB. Actual peak RSS will be higher
+due to interpreter and SVD workspace overhead.
 Both windows share the same dominant memory term---eigenpair approximation reduces FLOPs, not memory.}
 \label{tab:timing}
 \small
@@ -174,7 +175,7 @@ Both windows share the same dominant memory term---eigenpair approximation reduc
 \textbf{Dataset} & \textbf{Win.} &
   \textbf{Build (s)} & \textbf{SVD (s)} & \textbf{Total (s)} & \textbf{Est.\ mem.\ (MiB)} \\
 \midrule
-\multirow{2}{*}{PPI}         & $T{=}1$  &  0.2 &  2.0 &  2.3 & \multirow{2}{*}{122} \\
+\multirow{2}{*}{PPI}         & $T{=}1$  &  0.2 &  2.0 &  2.3 & \multirow{2}{*}{115} \\
                               & $T{=}10$ &  2.5 &  2.6 &  5.1 & \\
 \addlinespace
 \multirow{2}{*}{Wikipedia}   & $T{=}1$  &  0.4 &  2.7 &  3.0 & \multirow{2}{*}{174} \\
@@ -191,14 +192,16 @@ Flickr & both & \multicolumn{3}{c}{OOM --- $N^2{\times}8\approx52$~GB $>$ 32~GB 
 \begin{figure}[h]
   \centering\vspace{-3pt}
   \includegraphics[width=0.92\linewidth]{results/scalability_plot.png}
-  \caption{\small Left: total time vs.\ $N$ (log--log); right: measured peak RSS vs.\ $N$ (log--log).}
+  \caption{\small Left: total time vs.\ $N$ (log--log); right: estimated memory ($N^2{\times}8$) vs.\ $N$ (log--log).}
   \label{fig:scaling}
 \end{figure}
 
-Estimated peak memory ($N^2{\times}8$): 115~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC);
-actual RSS will exceed this by interpreter and workspace overhead.
+No direct peak-memory measurement was taken; values are theoretical estimates ($N^2{\times}8$
+bytes per dense matrix copy): 115~MiB (PPI), 174~MiB (Wiki), and 811~MiB (BC).
+Actual runtime RSS will exceed this due to Python interpreter overhead, sparse matrix representations,
+and SVD workspace allocations.
 Flickr ($N^2{\times}8\approx52$~GB) exceeds the 32~GB local limit; the naive three-copy
-\texttt{np.log(np.maximum(M,\,1))} would consume $\approx$145~GB.
+\texttt{np.log(np.maximum(M,\,1))} would consume $\approx$156~GB.
 Time scaling: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) yields 4.1$\times$ more time
 for both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$); three points cannot pin down an exponent
 precisely, but the trend is sub-quadratic. SVD dominates at $T{=}1$ (7.7 of 9.5~s, BlogCatalog);

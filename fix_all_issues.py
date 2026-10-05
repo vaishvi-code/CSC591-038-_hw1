@@ -117,10 +117,10 @@ for ds, (path, var) in DATASETS.items():
 ds_order = ["ppi","wikipedia","blogcatalog"]
 nodes    = {"ppi":3890,"wikipedia":4777,"blogcatalog":10312}
 # Hardcoded totals from log (construction+SVD):
-wall_T1  = {"ppi":1.3,"wikipedia":1.9,"blogcatalog":7.3}
-wall_T10 = {"ppi":8.5,"wikipedia":22.5,"blogcatalog":102.5}
-# Real measured peak RSS (from fix_report_data.py run):
-mem_MB   = {"ppi":122,"wikipedia":174,"blogcatalog":811}
+wall_T1  = {"ppi":2.3,"wikipedia":3.0,"blogcatalog":9.5}
+wall_T10 = {"ppi":5.1,"wikipedia":5.1,"blogcatalog":21.4}
+# Estimated peak memory N^2 * 8 in MiB:
+mem_MB   = {"ppi":115,"wikipedia":174,"blogcatalog":811}
 
 colors={1:"#4C72B0",10:"#DD8452"}; markers={1:"o",10:"s"}
 fig, axes = plt.subplots(1,2,figsize=(11,4.2))
@@ -128,18 +128,20 @@ fig, axes = plt.subplots(1,2,figsize=(11,4.2))
 for T, wall_d in [(1,wall_T1),(10,wall_T10)]:
     xs=[nodes[d] for d in ds_order]
     yt=[wall_d[d] for d in ds_order]
-    ym=[mem_MB[d] for d in ds_order]
     axes[0].plot(xs,yt,marker=markers[T],color=colors[T],label=f"T={T}",lw=2,ms=8)
-    axes[1].plot(xs,ym,marker=markers[T],color=colors[T],label=f"T={T}",lw=2,ms=8)
     for x,y,lbl in zip(xs,yt,ds_order):
         axes[0].annotate(lbl,(x,y),textcoords="offset points",xytext=(4,4),fontsize=8)
-    for x,y,lbl in zip(xs,ym,ds_order):
-        axes[1].annotate(lbl,(x,y),textcoords="offset points",xytext=(4,4),fontsize=8)
+
+xs=[nodes[d] for d in ds_order]
+ym=[mem_MB[d] for d in ds_order]
+axes[1].plot(xs,ym,marker="o",color="#2CA02C",label=r"Est. $N^2 \times 8$ (MiB)",lw=2,ms=8)
+for x,y,lbl in zip(xs,ym,ds_order):
+    axes[1].annotate(f"{lbl} ({y})",(x,y),textcoords="offset points",xytext=(4,4),fontsize=8)
 
 for ax,ylabel,title in [
     (axes[0],"Wall-Clock Time (s)","Scale vs. Time"),
-    (axes[1],"Peak RSS (MB)","Scale vs. Memory")]:
-    ax.set_xlabel("Number of Nodes (N)",fontsize=11)
+    (axes[1],"Estimated Memory (MiB)",r"Scale vs. Memory ($N^2 \times 8$ bytes)")]:
+    ax.set_xlabel("Number of Nodes ($N$)",fontsize=11)
     ax.set_ylabel(ylabel,fontsize=11)
     ax.set_title(title,fontsize=12)
     ax.set_xscale("log"); ax.set_yscale("log")
@@ -148,7 +150,7 @@ for ax,ylabel,title in [
 fig.tight_layout()
 fig.savefig("results/scalability_plot.png",dpi=150)
 plt.close(fig)
-print("\nSaved results/scalability_plot.png (memory panel now populated)")
+print("\nSaved results/scalability_plot.png (memory panel now populated with 115, 174, 811 MiB)")
 
 # ── Print timing breakdown for report ───────────────────────────────────────
 import csv
