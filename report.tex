@@ -24,21 +24,21 @@ run \texttt{python run\_experiments.py} for Tasks 1--2, \texttt{python fix\_all\
 \textbf{Setup.} We use the NetMF open-source implementation~\cite{netmf} (\texttt{netmf.py} + \texttt{predict.py}).
 Classification: one-vs-rest logistic regression (scikit-learn), 10-fold CV, ratios 10--90\%.
 \textbf{Fix applied:} \texttt{import scipy.sparse.linalg} added to \texttt{netmf.py} (SciPy~1.x does not auto-import submodules).
-\textbf{Hardware:} local workstation, 32~GB RAM, Python 3.11 (PPI, Wikipedia, BlogCatalog);
-Flickr ($N{=}80{,}513$, requires $\approx$52~GB single copy or $\approx$155~GB naive) ran on NC State ARC
-(partition \texttt{normal}, 192~GB RAM/node, 4 CPUs, jobs 297509 \& 297512).
+\textbf{Hardware:} local workstation, 32~GB RAM, Python 3.11.
+Flickr ($N{=}80{,}513$) requires $\approx$52~GB (single copy) or $\approx$145~GB (naive three-copy peak)
+and could not be run locally; results are not reported.
 
 \begin{table}[h]
 \centering\vspace{-4pt}
-\caption{Micro-F1 / Macro-F1 (\%) at 10\% training ratio (1\% for Flickr to match paper).
-  WikiPedia gap ($<$0.7 pts) is due to CV fold-assignment and solver-tolerance differences vs.\ the paper's C implementation.}
+\caption{Micro-F1 / Macro-F1 (\%) at 10\% training ratio.
+  Wikipedia gap ($<$0.7 pts) is due to CV fold-assignment and solver-tolerance differences vs.\ the paper's C implementation.}
 \label{tab:compare}
 \setlength{\tabcolsep}{3.5pt}\small
 \begin{tabular}{llcccc}
 \toprule
 \multirow{2}{*}{\textbf{Dataset}} & \multirow{2}{*}{\textbf{Win.}} &
   \multicolumn{2}{c}{\textbf{Paper (Table 3)}} &
-  \multicolumn{2}{c}{\textbf{Ours}} \\
+  \multicolumn{2}{c}{\textbf{Ours (10\%)}} \\
 \cmidrule(lr){3-4}\cmidrule(lr){5-6}
 & & Micro & Macro & Micro & Macro \\
 \midrule
@@ -51,11 +51,10 @@ Flickr ($N{=}80{,}513$, requires $\approx$52~GB single copy or $\approx$155~GB n
 \multirow{2}{*}{Wikipedia}   & $T{=}1$  & 49.90 &  9.25 & 50.56 &  9.30 \\
                               & $T{=}10$ & 46.21 &  8.38 & 46.51 &  8.58 \\
 \addlinespace
-\multirow{2}{*}{Flickr (ARC, 1\%)} & $T{=}1$ & 23.87 & 6.44 & \textit{see note}$^\dagger$ & \\
-                                    & $T{=}10$& 29.95 & 13.50& \textit{see note}$^\dagger$ & \\
+Flickr & $T{=}1$  & 23.87 & 6.44 & \multicolumn{2}{c}{OOM on local hardware} \\
+       & $T{=}10$ & 29.95 & 13.50& \multicolumn{2}{c}{OOM on local hardware} \\
 \bottomrule
-\multicolumn{6}{l}{\small $^\dagger$Flickr 1\% run not yet added; predict.py re-run at 1\% ratio pending.
-  10\% results: $T{=}1$ 30.6/13.7, $T{=}10$ 37.4/21.9.}
+\multicolumn{6}{l}{\small Flickr requires $\approx$52~GB (single copy); exceeds local 32~GB RAM.}
 \end{tabular}
 \end{table}
 
@@ -81,14 +80,14 @@ $T{=}10 > T{=}1$ on BlogCatalog and PPI; Wikipedia reverses this (local structur
 \multirow{2}{*}{WK} & 1  & 50.6 & 54.3 & 56.2 & 57.3 & 57.8 & 58.3 & 58.5 & 58.7 & 59.0 \\
                     & 10 & 46.5 & 48.8 & 50.0 & 50.7 & 51.2 & 51.4 & 51.6 & 51.9 & 52.6 \\
 \bottomrule
-\multicolumn{11}{l}{\small BC=BlogCatalog, WK=Wikipedia. Flickr (ARC) omitted here; 10\% Micro: $T{=}1$~30.6, $T{=}10$~37.4.}
+\multicolumn{11}{l}{\small BC=BlogCatalog, WK=Wikipedia. Flickr omitted (OOM).}
 \end{tabular}
 \end{table}
 
 \begin{figure}[h]
   \centering\vspace{-3pt}
   \includegraphics[width=\linewidth,height=4.2cm,keepaspectratio]{results/f1_vs_ratio.png}
-  \caption{Micro-F1 (solid) and Macro-F1 (dotted) vs.\ training ratio for local datasets. Flickr excluded (ARC-only).}
+  \caption{Micro-F1 (solid) and Macro-F1 (dotted) vs.\ training ratio. Flickr omitted (OOM).}
   \label{fig:f1ratio}
 \end{figure}
 
@@ -106,7 +105,7 @@ Pipeline: (1)~$A$ sparse; (2)~$M$ built as dense $N{\times}N$ float64 (both code
 \begin{table}[h]
 \centering\vspace{-4pt}
 \caption{Density (\% entries $>0$) at each pipeline stage. \texttt{nnz(A)} counts $2|E|$ (symmetric storage).
-$T{=}10$ densities measured from the materialised matrix; Flickr $T{=}10$ sampled (100 rows on ARC).}
+$T{=}10$ densities measured from the materialised matrix.}
 \label{tab:sparsity}
 \small
 \begin{tabular}{lrrrrrr}
@@ -116,9 +115,9 @@ $T{=}10$ densities measured from the materialised matrix; Flickr $T{=}10$ sample
 PPI         &  3,890 &  76,584 & 0.506\% & 0.499\% & 50.0\% & 100\% \\
 Wikipedia   &  4,777 & 184,812 & 0.810\% & 0.718\% & 94.9\% & 100\% \\
 BlogCatalog & 10,312 & 667,966 & 0.628\% & 0.605\% & 91.9\% & 100\% \\
-Flickr      & 80,513 & 11.8M   & 0.182\% & OOM$^\ddagger$ & 48.2\%$^*$ & 100\% \\
+Flickr      & 80,513 & ---     & 0.182\% & OOM & OOM & --- \\
 \bottomrule
-\multicolumn{7}{l}{\small $^*$100-row sample on ARC. $^\ddagger$OOMs locally (32~GB $\ll$ 52~GB required).}
+\multicolumn{7}{l}{\small Flickr OOMs locally; $N^2{\times}8\approx52$~GB $>$ 32~GB RAM.}
 \end{tabular}
 \end{table}
 
@@ -158,13 +157,12 @@ of $Y$) gives a tight bound: the discarded eigenvalues of the normalized adjacen
 
 \begin{table}[h]
 \centering\vspace{-4pt}
-\caption{Measured construction (build) and factorization (SVD) times, and peak RSS (psutil, process delta over baseline).
-Peak RSS $\approx N^2{\times}8$~bytes: 115~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC), 48.3~GiB (Flickr theoretical).
-Both windows incur the same peak---eigenpair approximation reduces FLOPs, not memory.
-Flickr: ARC job 297509 (T=1, in-place rewrite); sacct MaxRSS not recovered; theoretical minimum 48.3~GiB.}
+\caption{Measured construction (build) and factorization (SVD) times, and peak RSS (psutil, delta over baseline).
+Peak RSS $\approx N^2{\times}8$~bytes: 115~MiB (PPI), 174~MiB (Wiki), 811~MiB (BC).
+Both windows incur the same peak---eigenpair approximation reduces FLOPs, not memory.}
 \label{tab:timing}
 \small
-\begin{tabular}{llrrrrr}
+\begin{tabular}{llrrrr}
 \toprule
 \textbf{Dataset} & \textbf{Win.} &
   \textbf{Build (s)} & \textbf{SVD (s)} & \textbf{Total (s)} & \textbf{Peak RSS (MiB)} \\
@@ -178,7 +176,7 @@ Flickr: ARC job 297509 (T=1, in-place rewrite); sacct MaxRSS not recovered; theo
 \multirow{2}{*}{BlogCatalog} & $T{=}1$  &  1.8 &  7.7 &  9.5 & \multirow{2}{*}{811} \\
                               & $T{=}10$ & 14.1 &  7.3 & 21.4 & \\
 \addlinespace
-Flickr (ARC)  & $T{=}1$ & \multicolumn{3}{c}{$\approx$177~s total} & $\geq$48.3~GiB \\
+Flickr & both & \multicolumn{3}{c}{OOM --- $N^2{\times}8\approx52$~GB $>$ 32~GB RAM} & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -186,20 +184,16 @@ Flickr (ARC)  & $T{=}1$ & \multicolumn{3}{c}{$\approx$177~s total} & $\geq$48.3~
 \begin{figure}[h]
   \centering\vspace{-3pt}
   \includegraphics[width=0.92\linewidth]{results/scalability_plot.png}
-  \caption{\small Left: total time vs.\ $N$ (log--log); right: $N^2{\times}8$ memory vs.\ $N$ (log--log)
-  with 32~GiB local RAM limit (red dashed). Flickr included on both panels.}
+  \caption{\small Left: total time vs.\ $N$ (log--log); right: measured peak RSS vs.\ $N$ (log--log).}
   \label{fig:scaling}
 \end{figure}
 
-Memory grows exactly as $N^2$: theoretical values (115, 174, 811~MiB local; 48.3~GiB Flickr) match
-measured RSS to within noise. Flickr exceeds the 32~GiB local limit; even with in-place operations the
-minimum is one copy ($\approx$48~GiB). The naive \texttt{np.log(np.maximum(M,\,1))} creates three copies
-($\approx$145~GiB), used on ARC where the 192~GiB node RAM suffices.
-Time scaling over local datasets: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) gives 4.1$\times$
-more time at both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$). The Flickr ARC point ($T{=}1$, 177~s)
-is consistent: 7.8$\times$ more nodes $\to$ 18.6$\times$ more time ($\approx N^{1.42}$).
-Three points cannot pin down an exponent precisely, but the sub-quadratic trend ($N^{1.4}$--$N^{1.5}$)
-is consistent across all four datasets. SVD dominates at $T{=}1$ (e.g., 7.7 of 9.5~s for BlogCatalog);
+Measured peak RSS matches $N^2{\times}8$ bytes exactly (115, 174, 811~MiB). Flickr
+($N^2{\times}8\approx52$~GB) exceeds the 32~GB local RAM limit and is not run; the naive
+\texttt{np.log(np.maximum(M,\,1))} would peak at $\approx$145~GB (three copies).
+Time scaling: 2.65$\times$ more nodes (PPI $\to$ BlogCatalog) yields 4.1$\times$ more time
+for both $T{=}1$ and $T{=}10$ ($\approx N^{1.45}$); three points cannot pin down an exponent
+precisely, but the trend is sub-quadratic. SVD dominates at $T{=}1$ (7.7 of 9.5~s, BlogCatalog);
 construction dominates at $T{=}10$ (14.1 of 21.4~s).
 
 %% =========================================================
